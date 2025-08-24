@@ -40,9 +40,9 @@ const ownerProfile = {
     discordId: "729602261508161636",
     username: "ardelagi",
     displayName: "ardee",
-    avatar: null, // Will be populated when bot starts
+    avatar: "https://cdn.discordapp.com/attachments/1384179144652361789/1409212249708564601/IMG_8935.png?ex=68ac8eae&is=68ab3d2e&hm=d96ed832e57f83a27f7043e68b45abaddd2e96b973863ad05301ae623ae56154&",
     status: "Managing multiple Discord communities",
-    joinedDiscord: "06-07-2020", // Adjust to your actual join date
+    joinedDiscord: "2020-07-06", // Adjust to your actual join date
     badges: ["Server Owner", "Community Manager", "Bot Developer"],
     socialLinks: {
         github: "https://github.com/ardelagi",
