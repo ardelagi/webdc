@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Discord Saya</title>
+    <title>Discord Profile Ardelagi</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         :root {
             --bg-primary: #0a0a0a;
@@ -23,6 +25,10 @@
             --glass: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
             --shadow: rgba(0, 0, 0, 0.3);
+            --health-excellent: #00d4aa;
+            --health-good: #5dca00;
+            --health-fair: #ffb347;
+            --health-poor: #ff6b6b;
         }
 
         * {
@@ -61,6 +67,137 @@
             position: relative;
         }
 
+        /* Profile Section */
+        .profile-section {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            object-fit: cover;
+            box-shadow: 0 0 30px rgba(88, 101, 242, 0.3);
+        }
+
+        .profile-avatar-placeholder {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: var(--accent);
+            border: 3px solid var(--accent);
+            box-shadow: 0 0 30px rgba(88, 101, 242, 0.3);
+        }
+
+        .profile-info h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: var(--bg-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .profile-status {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .profile-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .profile-stat {
+            text-align: center;
+            padding: 20px;
+            background: var(--glass);
+            border-radius: 15px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .profile-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 8px;
+        }
+
+        .profile-stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Real-time indicator */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--success);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.8); }
+        }
+
+        /* Header */
         header {
             text-align: center;
             margin-bottom: 60px;
@@ -68,20 +205,14 @@
             position: relative;
         }
 
-        .logo-container {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 30px;
-        }
-
         .logo {
             font-size: 4rem;
             color: var(--accent);
-            animation: pulse 2s ease-in-out infinite alternate;
+            animation: pulse-logo 2s ease-in-out infinite alternate;
             filter: drop-shadow(0 0 20px rgba(88, 101, 242, 0.5));
         }
 
-        @keyframes pulse {
+        @keyframes pulse-logo {
             0% { transform: scale(1); }
             100% { transform: scale(1.05); }
         }
@@ -112,17 +243,64 @@
             line-height: 1.7;
         }
 
+        /* Analytics Dashboard */
+        .analytics-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .analytics-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .analytics-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .analytics-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--accent-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+
+        .analytics-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-bottom: 20px;
+        }
+
+        /* Global Stats Bar */
         .stats-bar {
             display: flex;
             justify-content: center;
             gap: 40px;
-            margin-top: 30px;
+            margin: 30px 0;
             flex-wrap: wrap;
         }
 
         .global-stat {
             text-align: center;
-            padding: 15px 25px;
+            padding: 20px 30px;
             background: var(--glass);
             border: 1px solid var(--glass-border);
             border-radius: 15px;
@@ -136,10 +314,10 @@
         }
 
         .global-stat-value {
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: var(--success);
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         .global-stat-label {
@@ -149,9 +327,10 @@
             letter-spacing: 1px;
         }
 
+        /* Server Grid */
         .servers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
             gap: 30px;
             margin-bottom: 60px;
         }
@@ -188,18 +367,32 @@
             opacity: 1;
         }
 
+        /* Health Score */
+        .health-score {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .health-excellent { background: rgba(0, 212, 170, 0.2); color: var(--health-excellent); }
+        .health-good { background: rgba(93, 202, 0, 0.2); color: var(--health-good); }
+        .health-fair { background: rgba(255, 179, 71, 0.2); color: var(--health-fair); }
+        .health-poor { background: rgba(255, 107, 107, 0.2); color: var(--health-poor); }
+
         .server-header {
             padding: 30px;
             text-align: center;
             background: linear-gradient(135deg, var(--glass), transparent);
             border-bottom: 1px solid var(--glass-border);
             position: relative;
-        }
-
-        .server-icon-container {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 20px;
         }
 
         .server-icon {
@@ -225,17 +418,18 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .server-card:hover .server-icon,
-        .server-card:hover .server-icon-placeholder {
-            transform: scale(1.1);
-            box-shadow: 0 0 30px rgba(88, 101, 242, 0.3);
-        }
-
         .server-name {
             font-size: 1.6rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin: 15px 0 10px;
             color: var(--text-primary);
+        }
+
+        .server-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            line-height: 1.5;
         }
 
         .server-role {
@@ -251,20 +445,9 @@
             letter-spacing: 0.5px;
         }
 
-        .owner-role {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            color: #1a1a1a;
-        }
-
-        .admin-role {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-            color: white;
-        }
-
-        .staff-role {
-            background: linear-gradient(135deg, #00d4aa, #01a085);
-            color: white;
-        }
+        .owner-role { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #1a1a1a; }
+        .admin-role { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; }
+        .staff-role { background: linear-gradient(135deg, #00d4aa, #01a085); color: white; }
 
         .server-details {
             padding: 30px;
@@ -273,7 +456,7 @@
         .server-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: 15px;
             margin-bottom: 25px;
         }
 
@@ -292,7 +475,7 @@
         }
 
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 700;
             margin-bottom: 8px;
             color: var(--text-primary);
@@ -300,7 +483,7 @@
 
         .stat-label {
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 500;
@@ -316,72 +499,93 @@
             50% { opacity: 0.7; }
         }
 
-        .server-action {
-            text-align: center;
-        }
-
-        .join-btn {
-            background: var(--bg-gradient);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .join-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(88, 101, 242, 0.4);
-        }
-
-        .private-badge {
-            background: var(--bg-secondary);
-            color: var(--text-muted);
-            padding: 15px 30px;
-            border-radius: 25px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
+        /* Voice Activity */
+        .voice-activity {
+            background: var(--glass);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
             border: 1px solid var(--glass-border);
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .status-indicator {
-            width: 12px;
-            height: 12px;
+        .voice-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .voice-channels {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .voice-channel {
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Activity tracking */
+        .activity-feed {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 40px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            display: inline-block;
-            margin-left: 8px;
+            background: var(--accent-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
         }
 
-        .status-online {
-            background: var(--success);
-            animation: pulse-status 2s ease-in-out infinite;
+        .activity-content {
+            flex: 1;
         }
 
-        .status-offline {
-            background: var(--text-muted);
+        .activity-text {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 4px;
         }
 
-        @keyframes pulse-status {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.8); }
+        .activity-time {
+            color: var(--text-muted);
+            font-size: 0.8rem;
         }
 
+        /* Control Panel */
         .control-panel {
-            text-align: center;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             margin: 40px 0;
             padding: 30px;
             background: var(--glass);
@@ -390,83 +594,42 @@
             backdrop-filter: blur(10px);
         }
 
-        .refresh-btn {
+        .control-btn {
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--glass-border);
-            padding: 15px 30px;
-            border-radius: 25px;
+            padding: 15px 25px;
+            border-radius: 12px;
             cursor: pointer;
-            display: inline-flex;
+            display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .refresh-btn:hover {
+        .control-btn:hover {
             background: var(--accent);
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(88, 101, 242, 0.3);
         }
 
-        .refresh-btn:active {
-            transform: translateY(0);
+        .control-btn.active {
+            background: var(--accent);
         }
 
-        footer {
-            text-align: center;
-            margin-top: 60px;
-            padding: 40px 20px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
         }
 
-        .footer-content {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-            line-height: 1.8;
-        }
-
-        .last-updated {
-            margin-top: 15px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            padding: 10px 20px;
-            background: var(--bg-secondary);
-            border-radius: 15px;
-            display: inline-block;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-
-        .loading-content {
-            text-align: center;
-            color: var(--text-primary);
-        }
-
-        .loading-spinner {
-            font-size: 3rem;
-            color: var(--accent);
+        .spinner {
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
         }
 
         @keyframes spin {
@@ -474,10 +637,16 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Mobile Responsiveness */
+        /* Mobile responsiveness */
         @media (max-width: 768px) {
             .servers-grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
                 gap: 20px;
             }
             
@@ -485,856 +654,870 @@
                 font-size: 2.5rem;
             }
             
-            .subtitle {
-                font-size: 1.1rem;
-            }
-
-            .stats-bar {
-                gap: 20px;
-            }
-
-            .global-stat {
-                padding: 12px 20px;
-            }
-
-            .server-header,
-            .server-details {
-                padding: 20px;
-            }
-
-            .server-stats {
-                gap: 15px;
-            }
-
-            .stat {
-                padding: 12px;
-            }
-
-            .container {
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .main-title {
-                font-size: 2rem;
-            }
-
-            .logo {
-                font-size: 3rem;
-            }
-
-            .servers-grid {
+            .analytics-dashboard {
                 grid-template-columns: 1fr;
             }
-
+            
             .stats-bar {
                 flex-direction: column;
                 align-items: center;
-            }
-
-            .global-stat {
-                width: 100%;
-                max-width: 200px;
+                gap: 15px;
             }
         }
 
-        /* Scroll animations */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(30px);
-            animation: fadeInUp 0.8s ease forwards;
+        /* Notification styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease;
+            backdrop-filter: blur(10px);
         }
 
-        @keyframes fadeInUp {
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
             to {
+                transform: translateX(0);
                 opacity: 1;
-                transform: translateY(0);
             }
         }
 
-        .server-card:nth-child(1) { animation-delay: 0.1s; }
-        .server-card:nth-child(2) { animation-delay: 0.2s; }
-        .server-card:nth-child(3) { animation-delay: 0.3s; }
-        .server-card:nth-child(4) { animation-delay: 0.4s; }
-        .server-card:nth-child(5) { animation-delay: 0.5s; }
+        .notification.success { background: var(--success); }
+        .notification.error { background: var(--danger); }
+        .notification.warning { background: var(--warning); }
     </style>
 </head>
 <body>
-    <div class="loading-overlay" id="loading-overlay">
-        <div class="loading-content">
-            <div class="loading-spinner">
-                <i class="fas fa-sync-alt"></i>
-            </div>
-            <p>Memperbarui data server...</p>
-        </div>
-    </div>
-
     <div class="container">
-        <header>
-            <div class="logo-container">
-                <div class="logo">
+        <!-- Live Indicator -->
+        <div class="live-indicator">
+            <div class="live-dot"></div>
+            <span>LIVE</span>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="profile-section">
+            <div class="profile-header">
+                <div class="profile-avatar-placeholder" id="profile-avatar">
                     <i class="fab fa-discord"></i>
                 </div>
-            </div>
-            <h1 class="main-title">Server Discord Saya</h1>
-            <p class="subtitle">Koleksi server Discord yang saya kelola sebagai Owner, Admin, dan Moderator dengan komunitas yang aktif dan berkualitas</p>
-            
-            <div class="stats-bar">
-                <div class="global-stat">
-                    <div class="global-stat-value" id="total-members">6,714</div>
-                    <div class="global-stat-label">Total Anggota</div>
-                </div>
-                <div class="global-stat">
-                    <div class="global-stat-value">5</div>
-                    <div class="global-stat-label">Server Aktif</div>
-                </div>
-                <div class="global-stat">
-                    <div class="global-stat-value" id="total-online">365</div>
-                    <div class="global-stat-label">Online Sekarang</div>
+                <div class="profile-info">
+                    <h1 id="profile-name">ardelagii</h1>
+                    <div class="profile-status" id="profile-status">Managing multiple Discord communities</div>
+                    <div class="profile-badges" id="profile-badges">
+                        <span class="badge">Server Owner</span>
+                        <span class="badge">Community Manager</span>
+                        <span class="badge">Bot Developer</span>
+                    </div>
                 </div>
             </div>
+            <div class="profile-stats">
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="total-servers-managed">5</div>
+                    <div class="profile-stat-label">Servers Managed</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="total-members-managed">6,714</div>
+                    <div class="profile-stat-label">Total Members</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="average-health">85</div>
+                    <div class="profile-stat-label">Avg Health Score</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="member-since">2020</div>
+                    <div class="profile-stat-label">Discord Since</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <i class="fab fa-discord"></i>
+            </div>
+            <h1 class="main-title">Discord Server Showcase</h1>
+            <p class="subtitle">Real-time analytics and monitoring for Discord communities with live member tracking, voice activity, and server health scoring</p>
         </header>
 
-        <div class="servers-grid" id="servers-grid">
-            <!-- Server Card 1 -->
-            <div class="server-card fade-in">
-                <div class="server-header">
-                    <div class="server-icon-container">
-                        <div class="server-icon-placeholder">
-                            <i class="fab fa-discord"></i>
-                        </div>
+        <!-- Analytics Dashboard -->
+        <div class="analytics-dashboard">
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <div class="analytics-icon">
+                        <i class="fas fa-chart-line"></i>
                     </div>
-                    <h2 class="server-name">CEOKOPAT ALTER EGO</h2>
-                    <span class="server-role owner-role">Owner <i class="fas fa-crown"></i></span>
+                    <div class="analytics-title">Member Growth</div>
                 </div>
-                
-                <div class="server-details">
-                    <div class="server-stats">
-                        <div class="stat">
-                            <div class="stat-value">1,240</div>
-                            <div class="stat-label">Anggota</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">28</div>
-                            <div class="stat-label">Channel</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value online">84</div>
-                            <div class="stat-label">Online <span class="status-indicator status-online"></span></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">⭐</div>
-                            <div class="stat-label">Rating</div>
-                        </div>
-                    </div>
-                    
-                    <div class="server-action">
-                        <a href="https://discord.gg/uhsnuMdx69" target="_blank" class="join-btn">
-                            <i class="fas fa-sign-in-alt"></i>
-                            Join Server
-                        </a>
-                    </div>
+                <div class="chart-container">
+                    <canvas id="memberGrowthChart"></canvas>
                 </div>
             </div>
 
-            <!-- Server Card 2 -->
-            <div class="server-card fade-in">
-                <div class="server-header">
-                    <div class="server-icon-container">
-                        <div class="server-icon-placeholder">
-                            <i class="fas fa-gamepad"></i>
-                        </div>
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <div class="analytics-icon">
+                        <i class="fas fa-heartbeat"></i>
                     </div>
-                    <h2 class="server-name">Motionlife Roleplay</h2>
-                    <span class="server-role staff-role">Staff Discord <i class="fas fa-shield-alt"></i></span>
+                    <div class="analytics-title">Server Health</div>
                 </div>
-                
-                <div class="server-details">
-                    <div class="server-stats">
-                        <div class="stat">
-                            <div class="stat-value">3,582</div>
-                            <div class="stat-label">Anggota</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">42</div>
-                            <div class="stat-label">Channel</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value online">216</div>
-                            <div class="stat-label">Online <span class="status-indicator status-online"></span></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">🎮</div>
-                            <div class="stat-label">Kategori</div>
-                        </div>
-                    </div>
-                    
-                    <div class="server-action">
-                        <a href="https://discord.gg/motionliferoleplay" target="_blank" class="join-btn">
-                            <i class="fas fa-sign-in-alt"></i>
-                            Join Server
-                        </a>
-                    </div>
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
                 </div>
             </div>
 
-            <!-- Server Card 3 -->
-            <div class="server-card fade-in">
-                <div class="server-header">
-                    <div class="server-icon-container">
-                        <div class="server-icon-placeholder">
-                            <i class="fas fa-lock"></i>
-                        </div>
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <div class="analytics-icon">
+                        <i class="fas fa-microphone"></i>
                     </div>
-                    <h2 class="server-name">Motionlife Whitelist</h2>
-                    <span class="server-role admin-role">Admin <i class="fas fa-cog"></i></span>
+                    <div class="analytics-title">Voice Activity</div>
                 </div>
-                
-                <div class="server-details">
-                    <div class="server-stats">
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Anggota</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Channel</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Online <span class="status-indicator status-offline"></span></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">🔒</div>
-                            <div class="stat-label">Status</div>
-                        </div>
-                    </div>
-                    
-                    <div class="server-action">
-                        <span class="private-badge">
-                            <i class="fas fa-lock"></i>
-                            Private Server
-                        </span>
-                    </div>
+                <div class="chart-container">
+                    <canvas id="voiceChart"></canvas>
                 </div>
             </div>
+        </div>
 
-            <!-- Server Card 4 -->
-            <div class="server-card fade-in">
-                <div class="server-header">
-                    <div class="server-icon-container">
-                        <div class="server-icon-placeholder">
-                            <i class="fas fa-user-secret"></i>
-                        </div>
-                    </div>
-                    <h2 class="server-name">Motionlife Badside</h2>
-                    <span class="server-role admin-role">Admin <i class="fas fa-cog"></i></span>
-                </div>
-                
-                <div class="server-details">
-                    <div class="server-stats">
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Anggota</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Channel</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">Private</div>
-                            <div class="stat-label">Online <span class="status-indicator status-offline"></span></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">🔒</div>
-                            <div class="stat-label">Status</div>
-                        </div>
-                    </div>
-                    
-                    <div class="server-action">
-                        <span class="private-badge">
-                            <i class="fas fa-lock"></i>
-                            Private Server
-                        </span>
-                    </div>
-                </div>
+        <!-- Global Stats -->
+        <div class="stats-bar">
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-members">6,714</div>
+                <div class="global-stat-label">Total Members</div>
             </div>
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-servers">5</div>
+                <div class="global-stat-label">Active Servers</div>
+            </div>
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-online">365</div>
+                <div class="global-stat-label">Online Now</div>
+            </div>
+            <div class="global-stat">
+                <div class="global-stat-value" id="total-voice">12</div>
+                <div class="global-stat-label">In Voice</div>
+            </div>
+        </div>
 
-            <!-- Server Card 5 -->
-            <div class="server-card fade-in">
-                <div class="server-header">
-                    <div class="server-icon-container">
-                        <div class="server-icon-placeholder">
-                            <i class="fas fa-crosshairs"></i>
-                        </div>
+        <!-- Activity Feed -->
+        <div class="activity-feed">
+            <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-bolt" style="color: var(--accent);"></i>
+                Live Activity Feed
+            </h3>
+            <div id="activity-list">
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-user-plus"></i>
                     </div>
-                    <h2 class="server-name">Ex Hitmen</h2>
-                    <span class="server-role owner-role">Owner <i class="fas fa-crown"></i></span>
-                </div>
-                
-                <div class="server-details">
-                    <div class="server-stats">
-                        <div class="stat">
-                            <div class="stat-value">892</div>
-                            <div class="stat-label">Anggota</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">19</div>
-                            <div class="stat-label">Channel</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value online">37</div>
-                            <div class="stat-label">Online <span class="status-indicator status-online"></span></div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">💀</div>
-                            <div class="stat-label">Tema</div>
-                        </div>
-                    </div>
-                    
-                    <div class="server-action">
-                        <a href="https://discord.gg/2mBX4Uzgsr" target="_blank" class="join-btn">
-                            <i class="fas fa-sign-in-alt"></i>
-                            Join Server
-                        </a>
+                    <div class="activity-content">
+                        <div class="activity-text">System initialized - Real-time monitoring active</div>
+                        <div class="activity-time">Just now</div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Server Grid -->
+        <div class="servers-grid" id="servers-grid">
+            <!-- Server cards will be populated by JavaScript -->
+        </div>
+
+        <!-- Control Panel -->
         <div class="control-panel">
-            <h3 style="margin-bottom: 15px; color: var(--text-primary);">Kontrol Server</h3>
-            <button class="refresh-btn" id="refresh-btn">
+            <button class="control-btn" id="refresh-btn">
                 <i class="fas fa-sync-alt"></i>
                 Refresh Data
             </button>
+            <button class="control-btn" id="toggle-analytics">
+                <i class="fas fa-chart-bar"></i>
+                Toggle Analytics
+            </button>
+            <button class="control-btn" id="export-data">
+                <i class="fas fa-download"></i>
+                Export Data
+            </button>
+            <button class="control-btn" id="toggle-live">
+                <i class="fas fa-broadcast-tower"></i>
+                Live Updates
+            </button>
         </div>
 
-        <footer>
-            <div class="footer-content">
-                <p><i class="fas fa-code"></i> Dibuat dengan Node.js & Discord.js</p>
-                <p><i class="fas fa-heart" style="color: var(--danger);"></i> Dikembangkan untuk komunitas Discord Indonesia</p>
-                <div class="last-updated">
+        <!-- Footer -->
+        <footer style="text-align: center; margin-top: 60px; padding: 40px 20px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 20px; backdrop-filter: blur(10px);">
+            <div style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.8;">
+                <p><i class="fas fa-code"></i> Built with Node.js, Discord.js & WebSocket</p>
+                <p><i class="fas fa-heart" style="color: var(--danger);"></i> Developed for Discord community management</p>
+                <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-muted); padding: 10px 20px; background: var(--bg-secondary); border-radius: 15px; display: inline-block;">
                     <i class="fas fa-clock"></i>
-                    Terakhir diperbarui: <span id="last-updated">25 November 2023, 14:30 WIB</span>
+                    Last updated: <span id="last-updated">Loading...</span>
                 </div>
             </div>
         </footer>
     </div>
 
     <script>
-        // Real-time data refresh functionality with better error handling
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        // Charts
+        let memberGrowthChart, healthChart, voiceChart;
+        
+        // Application state
+        const state = {
+            servers: new Map(),
+            analytics: new Map(),
+            voice: new Map(),
+            profile: null,
+            liveUpdates: true,
+            lastUpdate: null
+        };
+
+        // Initialize charts
+        function initializeCharts() {
+            // Member Growth Chart
+            const memberCtx = document.getElementById('memberGrowthChart').getContext('2d');
+            memberGrowthChart = new Chart(memberCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total Members',
+                        data: [],
+                        borderColor: '#00d4aa',
+                        backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Health Chart
+            const healthCtx = document.getElementById('healthChart').getContext('2d');
+            healthChart = new Chart(healthCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Excellent', 'Good', 'Fair', 'Poor'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            '#00d4aa',
+                            '#5dca00',
+                            '#ffb347',
+                            '#ff6b6b'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#a0a0a0',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Voice Activity Chart
+            const voiceCtx = document.getElementById('voiceChart').getContext('2d');
+            voiceChart = new Chart(voiceCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Voice Members',
+                        data: [],
+                        backgroundColor: '#5865f2',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fetch and update profile data
+        async function fetchProfile() {
+            try {
+                const response = await fetch('/api/profile');
+                const result = await response.json();
+                
+                if (result.success) {
+                    state.profile = result.data;
+                    updateProfileSection(result.data);
+                }
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+            }
+        }
+
+        // Update profile section
+        function updateProfileSection(profileData) {
+            const { profile, stats } = profileData;
+            
+            // Update avatar
+            const avatarElement = document.getElementById('profile-avatar');
+            if (profile.avatar) {
+                avatarElement.innerHTML = `<img src="${profile.avatar}" alt="${profile.displayName}" class="profile-avatar">`;
+            }
+            
+            // Update profile info
+            document.getElementById('profile-name').textContent = profile.displayName || profile.username;
+            document.getElementById('profile-status').textContent = profile.status;
+            
+            // Update badges
+            const badgesContainer = document.getElementById('profile-badges');
+            badgesContainer.innerHTML = profile.badges.map(badge => 
+                `<span class="badge">${badge}</span>`
+            ).join('');
+            
+            // Update stats
+            document.getElementById('total-servers-managed').textContent = stats.totalServersManaged;
+            document.getElementById('total-members-managed').textContent = stats.totalMembersManaged.toLocaleString();
+            document.getElementById('average-health').textContent = stats.averageHealthScore;
+            
+            // Update member since
+            const joinYear = new Date(profile.joinedDiscord).getFullYear();
+            document.getElementById('member-since').textContent = joinYear;
+        }
+
+        // Fetch server data
         async function fetchServerData() {
             try {
                 const response = await fetch('/api/servers');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
                 const result = await response.json();
                 
                 if (result.success && result.data) {
-                    updateServerCards(result.data);
-                    updateGlobalStatsFromAPI(result.data);
+                    result.data.forEach(server => {
+                        state.servers.set(server.id, server);
+                    });
                     
-                    // Update timestamp
-                    if (result.lastUpdate) {
-                        const timestamp = new Date(result.lastUpdate).toLocaleString('id-ID', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) + ' WIB';
-                        
-                        const lastUpdatedElement = document.getElementById('last-updated');
-                        if (lastUpdatedElement) {
-                            lastUpdatedElement.textContent = timestamp;
-                        }
-                    }
+                    updateServerCards(result.data);
+                    updateGlobalStats(result.data);
+                    updateCharts(result.data);
+                    
+                    state.lastUpdate = result.lastUpdate;
+                    document.getElementById('last-updated').textContent = new Date(result.lastUpdate).toLocaleString();
                     
                     return true;
-                } else {
-                    throw new Error(result.error || 'Data tidak valid dari server');
                 }
             } catch (error) {
                 console.error('Error fetching server data:', error);
-                
-                let errorMessage = 'Gagal memperbarui data';
-                if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                    errorMessage = 'Tidak dapat terhubung ke server';
-                } else if (error.message.includes('HTTP 4')) {
-                    errorMessage = 'Request tidak valid';
-                } else if (error.message.includes('HTTP 5')) {
-                    errorMessage = 'Server sedang bermasalah';
-                } else if (error.message) {
-                    errorMessage = error.message;
-                }
-                
-                showNotification(errorMessage, 'error');
+                showNotification('Failed to fetch server data', 'error');
                 return false;
             }
         }
 
-        // Update server cards with real data
+        // Update server cards
         function updateServerCards(serverData) {
-            const serverCards = document.querySelectorAll('.server-card');
-            
-            serverData.forEach((server, index) => {
-                if (index < serverCards.length) {
-                    const card = serverCards[index];
-                    
-                    // Update server name
-                    const nameElement = card.querySelector('.server-name');
-                    if (nameElement) nameElement.textContent = server.name;
-                    
-                    // Update server icon
-                    const iconContainer = card.querySelector('.server-icon-container');
-                    if (server.icon && iconContainer) {
-                        iconContainer.innerHTML = `<img src="${server.icon}" alt="${server.name} Icon" class="server-icon">`;
-                    }
-                    
-                    // Update stats with proper type checking
-                    const stats = card.querySelectorAll('.stat-value');
-                    if (stats.length >= 3) {
-                        // Member count
-                        if (typeof server.memberCount === 'number') {
-                            stats[0].textContent = server.memberCount.toLocaleString();
-                        } else {
-                            stats[0].textContent = server.memberCount || 'N/A';
-                        }
-                        
-                        // Channel count
-                        if (typeof server.channelCount === 'number') {
-                            stats[1].textContent = server.channelCount.toLocaleString();
-                        } else {
-                            stats[1].textContent = server.channelCount || 'N/A';
-                        }
-                        
-                        // Online count
-                        const onlineElement = stats[2];
-                        if (typeof server.onlineCount === 'number') {
-                            onlineElement.textContent = server.onlineCount.toLocaleString();
-                            onlineElement.classList.add('online');
-                        } else {
-                            onlineElement.textContent = server.onlineCount || 'N/A';
-                            onlineElement.classList.remove('online');
-                        }
-                    }
-                    
-                    // Update status indicator
-                    const statusIndicator = card.querySelector('.status-indicator');
-                    if (statusIndicator) {
-                        if (typeof server.onlineCount === 'number' && server.onlineCount > 0) {
-                            statusIndicator.classList.remove('status-offline');
-                            statusIndicator.classList.add('status-online');
-                        } else {
-                            statusIndicator.classList.remove('status-online');
-                            statusIndicator.classList.add('status-offline');
-                        }
-                    }
-                    
-                    // Show error if any
-                    if (server.error) {
-                        console.warn(`Server ${server.name} has error:`, server.error);
-                    }
-                }
-            });
-        }
-
-        // Update global stats from API data with better error handling
-        function updateGlobalStatsFromAPI(serverData) {
-            let totalMembers = 0;
-            let totalOnline = 0;
+            const container = document.getElementById('servers-grid');
+            container.innerHTML = '';
             
             serverData.forEach(server => {
-                // Only count numeric values
-                if (typeof server.memberCount === 'number' && !isNaN(server.memberCount)) {
-                    totalMembers += server.memberCount;
-                }
-                if (typeof server.onlineCount === 'number' && !isNaN(server.onlineCount)) {
-                    totalOnline += server.onlineCount;
-                }
+                const card = createServerCard(server);
+                container.appendChild(card);
             });
-            
-            const totalMembersElement = document.getElementById('total-members');
-            const totalOnlineElement = document.getElementById('total-online');
-            
-            if (totalMembersElement) {
-                totalMembersElement.textContent = totalMembers > 0 ? totalMembers.toLocaleString() : '0';
-            }
-            if (totalOnlineElement) {
-                totalOnlineElement.textContent = totalOnline > 0 ? totalOnline.toLocaleString() : '0';
-            }
         }
 
-        // Enhanced refresh button functionality
-        document.getElementById('refresh-btn').addEventListener('click', async function() {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            const refreshBtn = this;
-            const originalContent = refreshBtn.innerHTML;
+        // Create server card
+        function createServerCard(server) {
+            const card = document.createElement('div');
+            card.className = 'server-card fade-in';
+            card.setAttribute('data-server-id', server.id);
             
-            // Show loading overlay
-            loadingOverlay.style.display = 'flex';
-            
-            // Update button state
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memperbarui...';
-            refreshBtn.disabled = true;
-            
-            // Fetch real data
-            const success = await fetchServerData();
-            
-            // Hide loading overlay
-            loadingOverlay.style.display = 'none';
-            
-            // Reset button
-            refreshBtn.innerHTML = originalContent;
-            refreshBtn.disabled = false;
-            
-            // Show notification
-            if (success) {
-                showNotification('Data berhasil diperbarui!', 'success');
+            // Health score styling
+            let healthClass = 'health-poor';
+            let healthText = 'Poor';
+            if (server.healthScore?.overall >= 80) {
+                healthClass = 'health-excellent';
+                healthText = 'Excellent';
+            } else if (server.healthScore?.overall >= 60) {
+                healthClass = 'health-good';
+                healthText = 'Good';
+            } else if (server.healthScore?.overall >= 40) {
+                healthClass = 'health-fair';
+                healthText = 'Fair';
             }
-        });
-
-        // Function to update server stats with random variations
-        function updateServerStats() {
-            const serverCards = document.querySelectorAll('.server-card');
             
-            serverCards.forEach((card, index) => {
-                const stats = card.querySelectorAll('.stat-value');
-                
-                // Skip private servers
-                if (stats[0].textContent === 'Private') return;
-                
-                // Update member count with small random variation
-                const currentMembers = parseInt(stats[0].textContent.replace(',', ''));
-                const variation = Math.floor(Math.random() * 10) - 5; // -5 to +5
-                const newMembers = Math.max(0, currentMembers + variation);
-                stats[0].textContent = newMembers.toLocaleString();
-                
-                // Update online count with small variation
-                const onlineElement = card.querySelector('.online');
-                if (onlineElement) {
-                    const currentOnline = parseInt(onlineElement.textContent);
-                    const onlineVariation = Math.floor(Math.random() * 6) - 3; // -3 to +3
-                    const newOnline = Math.max(0, currentOnline + onlineVariation);
-                    onlineElement.textContent = newOnline;
-                }
-            });
+            // Role styling
+            let roleClass = 'server-role';
+            if (server.role === 'Owner') roleClass += ' owner-role';
+            else if (server.role === 'Admin') roleClass += ' admin-role';
+            else if (server.role.includes('Staff')) roleClass += ' staff-role';
             
-            // Update global stats
-            updateGlobalStats();
+            card.innerHTML = `
+                <div class="health-score ${healthClass}">
+                    <i class="fas fa-heartbeat"></i>
+                    ${server.healthScore?.overall || 0}% ${healthText}
+                </div>
+                
+                <div class="server-header">
+                    <div class="server-icon-container">
+                        ${server.icon ? 
+                            `<img src="${server.icon}" alt="${server.name}" class="server-icon">` :
+                            `<div class="server-icon-placeholder"><i class="fab fa-discord"></i></div>`
+                        }
+                    </div>
+                    <h2 class="server-name">${server.name}</h2>
+                    ${server.description ? `<p class="server-description">${server.description}</p>` : ''}
+                    <span class="${roleClass}">
+                        ${server.role}
+                        ${server.role === 'Owner' ? '<i class="fas fa-crown"></i>' : 
+                          server.role === 'Admin' ? '<i class="fas fa-cog"></i>' : 
+                          '<i class="fas fa-shield-alt"></i>'}
+                    </span>
+                </div>
+                
+                <div class="server-details">
+                    ${server.voiceData && server.voiceData.length > 0 ? `
+                        <div class="voice-activity">
+                            <div class="voice-header">
+                                <i class="fas fa-microphone"></i>
+                                <strong>Active Voice Channels</strong>
+                            </div>
+                            <div class="voice-channels">
+                                ${server.voiceData.map(voice => `
+                                    <div class="voice-channel">
+                                        <i class="fas fa-volume-up"></i>
+                                        ${voice.channelName} (${voice.memberCount})
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="server-stats">
+                        <div class="stat">
+                            <div class="stat-value">${typeof server.memberCount === 'number' ? server.memberCount.toLocaleString() : server.memberCount}</div>
+                            <div class="stat-label">Members</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${typeof server.channelCount === 'number' ? server.channelCount : server.channelCount}</div>
+                            <div class="stat-label">Channels</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value${typeof server.onlineCount === 'number' ? ' online' : ''}">${typeof server.onlineCount === 'number' ? server.onlineCount.toLocaleString() : server.onlineCount}</div>
+                            <div class="stat-label">Online</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${server.totalVoiceMembers || 0}</div>
+                            <div class="stat-label">In Voice</div>
+                        </div>
+                    </div>
+                    
+                    <div class="server-action">
+                        ${server.invite ? 
+                            `<a href="${server.invite}" target="_blank" class="join-btn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Join Server
+                            </a>` :
+                            `<span class="private-badge">
+                                <i class="fas fa-lock"></i>
+                                Private Server
+                            </span>`
+                        }
+                    </div>
+                </div>
+            `;
+            
+            return card;
         }
 
-        // Function to update global statistics
-        function updateGlobalStats() {
-            const serverCards = document.querySelectorAll('.server-card');
+        // Update global stats
+        function updateGlobalStats(serverData) {
             let totalMembers = 0;
             let totalOnline = 0;
+            let totalVoice = 0;
             
-            serverCards.forEach(card => {
-                const stats = card.querySelectorAll('.stat-value');
-                const membersText = stats[0].textContent;
-                const onlineElement = card.querySelector('.online');
-                
-                if (membersText !== 'Private') {
-                    totalMembers += parseInt(membersText.replace(',', ''));
+            serverData.forEach(server => {
+                if (typeof server.memberCount === 'number') {
+                    totalMembers += server.memberCount;
                 }
-                
-                if (onlineElement && onlineElement.textContent !== 'Private') {
-                    totalOnline += parseInt(onlineElement.textContent);
+                if (typeof server.onlineCount === 'number') {
+                    totalOnline += server.onlineCount;
+                }
+                if (typeof server.totalVoiceMembers === 'number') {
+                    totalVoice += server.totalVoiceMembers;
                 }
             });
             
             document.getElementById('total-members').textContent = totalMembers.toLocaleString();
-            document.getElementById('total-online').textContent = totalOnline;
+            document.getElementById('total-servers').textContent = serverData.length;
+            document.getElementById('total-online').textContent = totalOnline.toLocaleString();
+            document.getElementById('total-voice').textContent = totalVoice;
         }
 
-        // Enhanced notification system
-        function showNotification(message, type = 'info') {
-            // Remove any existing notifications
-            const existingNotifications = document.querySelectorAll('.notification');
-            existingNotifications.forEach(notif => notif.remove());
+        // Update charts
+        function updateCharts(serverData) {
+            // Member Growth Chart
+            const totalMembers = serverData.reduce((sum, server) => 
+                typeof server.memberCount === 'number' ? sum + server.memberCount : sum, 0);
             
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
+            const now = new Date();
+            const timeLabel = now.toLocaleTimeString();
             
-            let iconClass = 'fas fa-info-circle';
-            let bgColor = 'var(--accent)';
-            
-            switch(type) {
-                case 'success':
-                    iconClass = 'fas fa-check-circle';
-                    bgColor = 'var(--success)';
-                    break;
-                case 'error':
-                    iconClass = 'fas fa-exclamation-circle';
-                    bgColor = 'var(--danger)';
-                    break;
-                case 'warning':
-                    iconClass = 'fas fa-exclamation-triangle';
-                    bgColor = 'var(--warning)';
-                    break;
+            if (memberGrowthChart.data.labels.length > 20) {
+                memberGrowthChart.data.labels.shift();
+                memberGrowthChart.data.datasets[0].data.shift();
             }
             
+            memberGrowthChart.data.labels.push(timeLabel);
+            memberGrowthChart.data.datasets[0].data.push(totalMembers);
+            memberGrowthChart.update('none');
+
+            // Health Chart
+            const healthDistribution = { excellent: 0, good: 0, fair: 0, poor: 0 };
+            
+            serverData.forEach(server => {
+                if (server.healthScore?.overall >= 80) healthDistribution.excellent++;
+                else if (server.healthScore?.overall >= 60) healthDistribution.good++;
+                else if (server.healthScore?.overall >= 40) healthDistribution.fair++;
+                else healthDistribution.poor++;
+            });
+            
+            healthChart.data.datasets[0].data = [
+                healthDistribution.excellent,
+                healthDistribution.good,
+                healthDistribution.fair,
+                healthDistribution.poor
+            ];
+            healthChart.update('none');
+
+            // Voice Chart
+            const voiceData = serverData
+                .filter(server => !server.private && typeof server.totalVoiceMembers === 'number')
+                .map(server => ({
+                    name: server.name,
+                    voice: server.totalVoiceMembers || 0
+                }));
+            
+            voiceChart.data.labels = voiceData.map(d => d.name);
+            voiceChart.data.datasets[0].data = voiceData.map(d => d.voice);
+            voiceChart.update('none');
+        }
+
+        // Add activity to feed
+        function addActivity(activity) {
+            const activityList = document.getElementById('activity-list');
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            
+            const iconMap = {
+                'member_join': 'fa-user-plus',
+                'member_leave': 'fa-user-minus',
+                'voice_join': 'fa-microphone',
+                'voice_leave': 'fa-microphone-slash',
+                'server_update': 'fa-sync-alt',
+                'health_change': 'fa-heartbeat'
+            };
+            
+            item.innerHTML = `
+                <div class="activity-icon">
+                    <i class="fas ${iconMap[activity.type] || 'fa-info'}"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-text">${activity.text}</div>
+                    <div class="activity-time">${new Date(activity.timestamp).toLocaleTimeString()}</div>
+                </div>
+            `;
+            
+            activityList.insertBefore(item, activityList.firstChild);
+            
+            // Keep only last 10 activities
+            if (activityList.children.length > 10) {
+                activityList.removeChild(activityList.lastChild);
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const iconMap = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
             notification.innerHTML = `
-                <i class="${iconClass}"></i>
+                <i class="fas ${iconMap[type]}"></i>
                 <span>${message}</span>
-                <button class="notification-close" onclick="this.parentElement.remove()">
+                <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; margin-left: auto; cursor: pointer;">
                     <i class="fas fa-times"></i>
                 </button>
             `;
             
-            // Add notification styles
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${bgColor};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 10px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-                z-index: 1001;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                min-width: 300px;
-                max-width: 500px;
-                animation: slideInRight 0.3s ease;
-                font-weight: 500;
-                backdrop-filter: blur(10px);
-            `;
-            
-            const closeBtn = notification.querySelector('.notification-close');
-            closeBtn.style.cssText = `
-                background: none;
-                border: none;
-                color: white;
-                cursor: pointer;
-                font-size: 1rem;
-                margin-left: auto;
-                padding: 5px;
-                border-radius: 50%;
-                transition: background 0.2s ease;
-            `;
-            
-            closeBtn.addEventListener('mouseenter', () => {
-                closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-            });
-            
-            closeBtn.addEventListener('mouseleave', () => {
-                closeBtn.style.background = 'none';
-            });
-            
             document.body.appendChild(notification);
             
-            // Auto remove after 5 seconds for errors, 3 seconds for others
-            const timeout = type === 'error' ? 5000 : 3000;
             setTimeout(() => {
                 if (notification.parentElement) {
-                    notification.style.animation = 'slideOutRight 0.3s ease';
-                    setTimeout(() => {
-                        notification.remove();
-                    }, 300);
+                    notification.remove();
                 }
-            }, timeout);
+            }, 5000);
         }
 
-        // Add slide-in and slide-out animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideInRight {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            
-            @keyframes slideOutRight {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-            
-            .notification {
-                backdrop-filter: blur(10px) !important;
-            }
-        `;
-        document.head.appendChild(style);
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            console.log('🔌 Connected to server');
+            showNotification('Connected to real-time updates', 'success');
+        });
 
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
+        socket.on('disconnect', () => {
+            console.log('🔌 Disconnected from server');
+            showNotification('Disconnected from real-time updates', 'warning');
+        });
+
+        socket.on('initialData', (data) => {
+            console.log('📊 Received initial data');
+            if (data.servers && data.servers.length > 0) {
+                updateServerCards(data.servers);
+                updateGlobalStats(data.servers);
+                updateCharts(data.servers);
+            }
+        });
+
+        socket.on('serverUpdate', (data) => {
+            if (!state.liveUpdates) return;
+            
+            console.log('🔄 Server update:', data.serverId);
+            state.servers.set(data.serverId, data.data);
+            
+            // Update specific server card
+            const serverCard = document.querySelector(`[data-server-id="${data.serverId}"]`);
+            if (serverCard) {
+                const newCard = createServerCard(data.data);
+                serverCard.replaceWith(newCard);
+            }
+            
+            addActivity({
+                type: 'server_update',
+                text: `${data.data.name} updated`,
+                timestamp: new Date().toISOString()
             });
         });
 
-        // Parallax effect for background
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const parallax = document.querySelector('body::before');
-            if (parallax) {
-                const speed = scrolled * 0.5;
-                document.body.style.backgroundPositionY = speed + 'px';
+        socket.on('globalStatsUpdate', (data) => {
+            if (!state.liveUpdates) return;
+            
+            console.log('📊 Global stats update');
+            document.getElementById('total-members').textContent = data.totalMembers.toLocaleString();
+            document.getElementById('total-online').textContent = data.totalOnline.toLocaleString();
+            document.getElementById('last-updated').textContent = new Date(data.lastUpdate).toLocaleString();
+        });
+
+        socket.on('memberUpdate', (data) => {
+            if (!state.liveUpdates) return;
+            
+            addActivity({
+                type: data.type === 'join' ? 'member_join' : 'member_leave',
+                text: `${data.member.username} ${data.type === 'join' ? 'joined' : 'left'} ${data.serverId}`,
+                timestamp: new Date().toISOString()
+            });
+            
+            showNotification(`Member ${data.type}: ${data.member.username}`, data.type === 'join' ? 'success' : 'info');
+        });
+
+        socket.on('voiceUpdate', (data) => {
+            if (!state.liveUpdates) return;
+            
+            addActivity({
+                type: data.event.action === 'join' ? 'voice_join' : 'voice_leave',
+                text: `${data.event.username} ${data.event.action}ed voice channel "${data.event.channel}"`,
+                timestamp: data.event.timestamp
+            });
+        });
+
+        socket.on('activityUpdate', (data) => {
+            if (!state.liveUpdates) return;
+            
+            console.log('💬 Activity update:', data.serverId);
+            // Could update activity indicators here
+        });
+
+        // Control panel event handlers
+        document.getElementById('refresh-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('refresh-btn');
+            const originalContent = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="fas fa-spinner spinner"></i> Refreshing...';
+            btn.disabled = true;
+            
+            const success = await fetchServerData();
+            
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            
+            if (success) {
+                showNotification('Data refreshed successfully!', 'success');
             }
         });
 
-        // Intersection Observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('fade-in');
-                }
-            });
-        }, observerOptions);
-
-        // Observe all server cards
-        document.querySelectorAll('.server-card').forEach(card => {
-            observer.observe(card);
+        document.getElementById('toggle-analytics').addEventListener('click', () => {
+            const dashboard = document.querySelector('.analytics-dashboard');
+            const btn = document.getElementById('toggle-analytics');
+            
+            if (dashboard.style.display === 'none') {
+                dashboard.style.display = 'grid';
+                btn.innerHTML = '<i class="fas fa-chart-bar"></i> Hide Analytics';
+                btn.classList.add('active');
+            } else {
+                dashboard.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-chart-bar"></i> Show Analytics';
+                btn.classList.remove('active');
+            }
         });
 
-        // Auto-refresh data every 5 minutes with real API
-        setInterval(async function() {
-            console.log('🔄 Auto-refreshing data...');
+        document.getElementById('toggle-live').addEventListener('click', () => {
+            const btn = document.getElementById('toggle-live');
+            const liveIndicator = document.querySelector('.live-indicator');
+            
+            state.liveUpdates = !state.liveUpdates;
+            
+            if (state.liveUpdates) {
+                btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> Disable Live';
+                btn.classList.add('active');
+                liveIndicator.style.display = 'flex';
+                showNotification('Live updates enabled', 'success');
+            } else {
+                btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> Enable Live';
+                btn.classList.remove('active');
+                liveIndicator.style.display = 'none';
+                showNotification('Live updates disabled', 'info');
+            }
+        });
+
+        document.getElementById('export-data').addEventListener('click', () => {
+            const data = {
+                servers: Array.from(state.servers.values()),
+                exportTime: new Date().toISOString(),
+                profile: state.profile
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `discord-servers-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Data exported successfully!', 'success');
+        });
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Initializing Discord Server Showcase');
+            
+            initializeCharts();
+            await fetchProfile();
             await fetchServerData();
-        }, 5 * 60 * 1000); // 5 minutes
-
-        // Initialize page with real data
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Add loading animations to server cards
-            const cards = document.querySelectorAll('.server-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = `${index * 0.1}s`;
-                card.classList.add('fade-in');
+            
+            // Add some initial activity
+            addActivity({
+                type: 'server_update',
+                text: 'Real-time monitoring system activated',
+                timestamp: new Date().toISOString()
             });
             
-            // Load initial data
-            console.log('🚀 Loading initial data...');
-            await fetchServerData();
-            
-            // Add hover effects to stats
-            document.querySelectorAll('.stat').forEach(stat => {
-                stat.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-3px) scale(1.02)';
-                });
-                
-                stat.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0) scale(1)';
-                });
-            });
+            console.log('✅ Application initialized successfully');
         });
 
-        // Theme toggle functionality (optional)
-        function toggleTheme() {
-            document.body.classList.toggle('light-theme');
-            const theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
-            localStorage.setItem('theme', theme);
-        }
-
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'light') {
-            document.body.classList.add('light-theme');
-        }
-
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Ctrl + R to refresh
-            if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-                document.getElementById('refresh-btn').click();
+        // Auto-refresh every 5 minutes
+        setInterval(async () => {
+            if (state.liveUpdates) {
+                console.log('🔄 Auto-refreshing data...');
+                await fetchServerData();
             }
-            
-            // Ctrl + T to toggle theme
-            if (e.ctrlKey && e.key === 't') {
-                e.preventDefault();
-                toggleTheme();
+        }, 5 * 60 * 1000);
+
+        // Page visibility API for performance
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('📱 Page hidden - reducing update frequency');
+            } else {
+                console.log('📱 Page visible - resuming normal updates');
+                fetchServerData();
             }
         });
-
-        // Add touch gestures for mobile
-        let touchStartY = 0;
-        let touchEndY = 0;
-
-        document.addEventListener('touchstart', function(e) {
-            touchStartY = e.changedTouches[0].screenY;
-        });
-
-        document.addEventListener('touchend', function(e) {
-            touchEndY = e.changedTouches[0].screenY;
-            handleSwipe();
-        });
-
-        function handleSwipe() {
-            const swipeDistance = touchStartY - touchEndY;
-            const minSwipeDistance = 100;
-            
-            if (Math.abs(swipeDistance) > minSwipeDistance) {
-                if (swipeDistance > 0) {
-                    // Swipe up - could trigger refresh
-                    if (window.scrollY === 0) {
-                        document.getElementById('refresh-btn').click();
-                    }
-                }
-            }
-        }
-
-        // Performance monitoring
-        function measurePerformance() {
-            if ('performance' in window) {
-                const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
-                console.log(`Page load time: ${loadTime}ms`);
-                
-                // Report to analytics if needed
-                if (loadTime > 3000) {
-                    console.warn('Slow page load detected');
-                }
-            }
-        }
-
-        window.addEventListener('load', measurePerformance);
-
-        // Error handling
-        window.addEventListener('error', function(e) {
-            console.error('JavaScript error:', e.error);
-            showNotification('Terjadi kesalahan. Silakan refresh halaman.', 'error');
-        });
-
-        // Service Worker registration (optional, for PWA)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('SW registered:', registration);
-                })
-                .catch(error => {
-                    console.log('SW registration failed:', error);
-                });
-        }
     </script>
 </body>
 </html>
