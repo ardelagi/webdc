@@ -37,12 +37,12 @@ const client = new Client({
 
 // Enhanced server configuration with profile info
 const ownerProfile = {
-    discordId: "your_discord_id",
+    discordId: "729602261508161636",
     username: "ardelagi",
-    displayName: "Ardelagi",
+    displayName: "ardee",
     avatar: null, // Will be populated when bot starts
     status: "Managing multiple Discord communities",
-    joinedDiscord: "2018-03-15", // Adjust to your actual join date
+    joinedDiscord: "06-07-2020", // Adjust to your actual join date
     badges: ["Server Owner", "Community Manager", "Bot Developer"],
     socialLinks: {
         github: "https://github.com/ardelagi",
